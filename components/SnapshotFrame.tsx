@@ -11,7 +11,9 @@ const SLOW_MS = 20_000;
 export function SnapshotFrame({ playback }: { playback: PlaybackUrls }) {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
-    setSlow(false);
+    // setSlow(true) runs in the timer callback (not synchronously in the effect body),
+    // so this doesn't trigger cascading renders. `slow` resets to false via the parent's
+    // `key` prop, which remounts this component when the snapshot URL changes.
     const id = setTimeout(() => setSlow(true), SLOW_MS);
     return () => clearTimeout(id);
   }, [playback.iframeUrl]);

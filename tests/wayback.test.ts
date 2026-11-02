@@ -12,6 +12,7 @@ import {
   cdxCache,
 } from "@/lib/wayback";
 import { ResurrectError } from "@/lib/errors";
+import type { CdxRow } from "@/lib/wayback";
 
 const HEADER = ["urlkey", "timestamp", "original", "mimetype", "statuscode", "digest", "length"];
 
@@ -28,6 +29,22 @@ function row(
     "d",
     "1",
   ];
+}
+
+// CdxRow object helper for selectClosestSnapshot (which consumes objects, not raw arrays).
+function objRow(
+  timestamp: string,
+  opts: Partial<{ mimetype: string; statuscode: string; original: string }> = {},
+): CdxRow {
+  return {
+    urlkey: "com,youtube)/",
+    timestamp,
+    original: opts.original ?? "http://youtube.com/",
+    mimetype: opts.mimetype ?? "text/html",
+    statuscode: opts.statuscode ?? "200",
+    digest: "d",
+    length: "1",
+  };
 }
 
 function cdxJson(rows: string[][]) {
@@ -146,25 +163,27 @@ describe("parseCdxResponse", () => {
 describe("selectClosestSnapshot", () => {
   const target = new Date(Date.UTC(2007, 5, 15));
   it("selects the closest capture", () => {
-    const rows = [row("20070601000000"), row("20070620000000"), row("20071001000000")];
+    const rows = [objRow("20070601000000"), objRow("20070620000000"), objRow("20071001000000")];
     expect(selectClosestSnapshot(rows, target)?.row.timestamp).toBe("20070620000000");
   });
   it("breaks ties to the earliest capture", () => {
-    const rows = [row("20070614120000"), row("20070615120000")]; // both 12h from midnight
+    const rows = [objRow("20070614120000"), objRow("20070615120000")]; // both 12h from midnight
     expect(selectClosestSnapshot(rows, target)?.row.timestamp).toBe("20070614120000");
   });
   it("filters out non-html and non-200 captures", () => {
     const rows = [
-      row("20070615120000", { mimetype: "image/jpeg" }),
-      row("20070620120000", { statuscode: "404" }),
-      row("20070620120000", { mimetype: "text/html", statuscode: "200" }),
+      objRow("20070615120000", { mimetype: "image/jpeg" }),
+      objRow("20070620120000", { statuscode: "404" }),
+      objRow("20070620120000", { mimetype: "text/html", statuscode: "200" }),
     ];
     const c = selectClosestSnapshot(rows, target);
     expect(c?.row.mimetype).toBe("text/html");
     expect(c?.row.statuscode).toBe("200");
   });
   it("returns undefined when no usable capture exists", () => {
-    expect(selectClosestSnapshot([row("20070615120000", { mimetype: "image/jpeg" })], target)).toBeUndefined();
+    expect(
+      selectClosestSnapshot([objRow("20070615120000", { mimetype: "image/jpeg" })], target),
+    ).toBeUndefined();
   });
 });
 
@@ -182,7 +201,7 @@ describe("resurrect (mocked CDX)", () => {
   it("falls back to a www variant when the first returns nothing", async () => {
     const fetchImpl = mockCdxSequence([[], [row("20070620000000", { original: "http://www.youtube.com/" })]]);
     const r = await resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl });
-    expect(r.status ?? "found").toBe("found");
+    expect(r.snapshot.timestamp).toBe("20070620000000");
     expect(r.snapshot.originalUrl).toBe("http://www.youtube.com/");
   });
 

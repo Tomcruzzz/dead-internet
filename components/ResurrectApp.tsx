@@ -55,7 +55,7 @@ export function ResurrectApp() {
           {response.status === "found" ? (
             <>
               <SnapshotMetaPanel data={response} requestedDate={response.requestedDate} />
-              <SnapshotFrame playback={response.playback} />
+              <SnapshotFrame key={response.playback.iframeUrl} playback={response.playback} />
               <div>
                 <button
                   onClick={handleReset}

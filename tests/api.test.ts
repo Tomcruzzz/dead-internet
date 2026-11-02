@@ -18,8 +18,11 @@ function makeRequest(body: unknown) {
 
 function mockCdx(rows: string[][]) {
   const body = rows.length === 0 ? "[]" : cdxRows(rows);
-  vi.spyOn(globalThis, "fetch").mockResolvedValue(
-    new Response(body, { status: 200, headers: { "content-type": "application/json" } }) as never,
+  // A fresh Response per call: resurrect may fetch more than once (www fallback),
+  // and a Response body can only be consumed once.
+  vi.spyOn(globalThis, "fetch").mockImplementation(
+    async () =>
+      new Response(body, { status: 200, headers: { "content-type": "application/json" } }) as never,
   );
 }
 
