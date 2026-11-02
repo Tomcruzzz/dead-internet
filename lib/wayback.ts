@@ -9,7 +9,10 @@ import { TtlCache } from "./cdx-cache";
 
 const CDX_BASE = "https://web.archive.org/cdx/search/cdx";
 const PLAYBACK_BASE = "https://web.archive.org/web";
-const WINDOW_MONTHS = 6;
+// Narrow window around the target date keeps the CDX response small (avoids
+// Wayback rate-limiting on heavily-archived sites). Dense sites (youtube, wikipedia)
+// have captures well within this window; very sparse sites may report no_snapshot.
+const WINDOW_MONTHS = 2;
 const CDX_TIMEOUT_MS = 15_000;
 const CDX_LIMIT = 500;
 
@@ -188,7 +191,45 @@ export interface QueryCdxOptions {
   offset?: number;
 }
 
-/** Query the Wayback CDX index for HTML/200 captures of `url` in [fromDate, toDate]. */
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Fetch the CDX URL, retrying once on rate-limiting (429) or temporary
+// unavailability (503), honoring Retry-After when present.
+async function fetchCdx(requestUrl: string, fetchImpl: typeof fetch): Promise<Response> {
+  const doFetch = () =>
+    fetchImpl(requestUrl, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(CDX_TIMEOUT_MS),
+    });
+  let resp: Response;
+  try {
+    resp = await doFetch();
+  } catch (e) {
+    throw archiveUnavailable(
+      `Archive lookup failed: ${e instanceof Error ? e.message : "network error"}`,
+    );
+  }
+  if (resp.status === 429 || resp.status === 503) {
+    const retryAfter = Number(resp.headers.get("retry-after"));
+    const delayMs =
+      Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 10) * 1000 : 2000;
+    await sleep(delayMs);
+    try {
+      resp = await doFetch();
+    } catch (e) {
+      throw archiveUnavailable(
+        `Archive lookup failed after retry: ${e instanceof Error ? e.message : "network error"}`,
+      );
+    }
+  }
+  return resp;
+}
+
+/**
+ * Query the Wayback CDX index for HTML/200 captures of `url` in [fromDate, toDate].
+ * `collapse=timestamp:8` keeps one capture per day, keeping the response small and
+ * avoiding Wayback rate-limiting on heavily-archived sites.
+ */
 export async function queryWaybackCdx(
   url: string,
   fromDate: Date,
@@ -203,21 +244,12 @@ export async function queryWaybackCdx(
   params.set("output", "json");
   params.append("filter", "statuscode:200"); // append (not set): CDX takes multiple filters
   params.append("filter", "mimetype:text/html");
+  params.set("collapse", "timestamp:8");
   params.set("limit", String(options.limit ?? CDX_LIMIT));
   if (options.offset) params.set("offset", String(options.offset));
   const requestUrl = `${CDX_BASE}?${params.toString()}`;
 
-  let resp: Response;
-  try {
-    resp = await fetchImpl(requestUrl, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(CDX_TIMEOUT_MS),
-    });
-  } catch (e) {
-    throw archiveUnavailable(
-      `Archive lookup failed: ${e instanceof Error ? e.message : "network error"}`,
-    );
-  }
+  const resp = await fetchCdx(requestUrl, fetchImpl);
   if (!resp.ok) throw archiveUnavailable(`Archive returned HTTP ${resp.status}.`);
   let json: unknown;
   try {
