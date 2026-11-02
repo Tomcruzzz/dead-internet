@@ -81,7 +81,12 @@ export function parseRequestedDate(input: string): ParsedRequestedDate {
   if (day < 1 || day > 31) throw invalidInput("Invalid day.");
   if (year < 1900) throw invalidInput("Invalid year.");
   const date = new Date(Date.UTC(year, month - 1, day));
-  if (Number.isNaN(date.getTime())) throw invalidInput("Invalid date.");
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) throw invalidInput("Invalid date.");
   return { date, display: formatDateForDisplay(date) };
 }
 
@@ -180,6 +185,7 @@ export function parseCdxResponse(json: unknown): CdxRow[] {
 export interface QueryCdxOptions {
   fetchImpl?: typeof fetch;
   limit?: number;
+  offset?: number;
 }
 
 /** Query the Wayback CDX index for HTML/200 captures of `url` in [fromDate, toDate]. */
@@ -198,6 +204,7 @@ export async function queryWaybackCdx(
   params.append("filter", "statuscode:200"); // append (not set): CDX takes multiple filters
   params.append("filter", "mimetype:text/html");
   params.set("limit", String(options.limit ?? CDX_LIMIT));
+  if (options.offset) params.set("offset", String(options.offset));
   const requestUrl = `${CDX_BASE}?${params.toString()}`;
 
   let resp: Response;
@@ -288,7 +295,19 @@ export async function resurrect(
     const cacheKey = `${variant}|${formatCdxDate(fromDate)}|${formatCdxDate(toDate)}`;
     let rows = cdxCache.get(cacheKey);
     if (!rows) {
-      rows = await queryWaybackCdx(variant, fromDate, toDate, { fetchImpl });
+      rows = [];
+      // CDX is chronological: search every page before choosing or caching a result.
+      for (let page = 0; ; page++) {
+        if (page === 100) {
+          throw archiveUnavailable("Too many captures to search. Try a more specific page URL.");
+        }
+        const batch = await queryWaybackCdx(variant, fromDate, toDate, {
+          fetchImpl,
+          offset: page * CDX_LIMIT,
+        });
+        rows.push(...batch);
+        if (batch.length < CDX_LIMIT) break;
+      }
       cdxCache.set(cacheKey, rows);
     }
     allRows = allRows.concat(rows);

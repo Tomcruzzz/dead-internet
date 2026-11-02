@@ -5,9 +5,9 @@ import { ResurrectError } from "@/lib/errors";
 import type { ResurrectResponse } from "@/lib/types";
 
 // Route Handlers are dynamic (not prerendered/cached) by default; POST in particular
-// always runs at request time. `runtime` is the only segment option we set
-// (`dynamic`/`revalidate`/`fetchCache` were removed in Next 16 with Cache Components).
-export const runtime = "nodejs";
+// always runs at request time on the default Node.js runtime. With Cache Components
+// enabled, Next 16 disallows `dynamic`/`revalidate`/`fetchCache`/`runtime` segment
+// configs, so we set none here and rely on the defaults.
 
 const HTTP_STATUS: Record<string, number> = {
   invalid_input: 400,

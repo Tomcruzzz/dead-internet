@@ -10,12 +10,23 @@ interface Entry<T> {
 export class TtlCache<T> {
   private store = new Map<string, Entry<T>>();
 
-  constructor(private ttlMs = 15 * 60 * 1000) {}
+  constructor(private ttlMs = 15 * 60 * 1000, private maxEntries = 100) {
+    if (!Number.isInteger(maxEntries) || maxEntries < 1) {
+      throw new RangeError("maxEntries must be a positive integer.");
+    }
+  }
+
+  private prune(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.store) {
+      if (now >= entry.expiresAt) this.store.delete(key);
+    }
+  }
 
   get(key: string): T | undefined {
     const entry = this.store.get(key);
     if (!entry) return undefined;
-    if (Date.now() > entry.expiresAt) {
+    if (Date.now() >= entry.expiresAt) {
       this.store.delete(key);
       return undefined;
     }
@@ -23,6 +34,11 @@ export class TtlCache<T> {
   }
 
   set(key: string, value: T): void {
+    this.prune();
+    this.store.delete(key);
+    if (this.store.size >= this.maxEntries) {
+      this.store.delete(this.store.keys().next().value!);
+    }
     this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs });
   }
 
@@ -31,6 +47,7 @@ export class TtlCache<T> {
   }
 
   get size(): number {
+    this.prune();
     return this.store.size;
   }
 }

@@ -104,6 +104,13 @@ describe("parseRequestedDate", () => {
   it("rejects bad month", () => {
     expect(() => parseRequestedDate("2007-13")).toThrow(ResurrectError);
   });
+  it.each(["2007-02-29", "2007-02-31", "2007-04-31", "1900-02-29"])(
+    "rejects nonexistent date %s",
+    (date) => expect(() => parseRequestedDate(date)).toThrow(ResurrectError),
+  );
+  it("accepts leap days in leap years", () => {
+    expect(parseRequestedDate("2000-02-29").date.toISOString()).toBe("2000-02-29T00:00:00.000Z");
+  });
   it("accepts a far-future date (no_snapshot is decided by the archive, not validation)", () => {
     expect(parseRequestedDate("2099-06-15").date.toISOString()).toBe("2099-06-15T00:00:00.000Z");
   });
@@ -188,6 +195,30 @@ describe("selectClosestSnapshot", () => {
 });
 
 describe("resurrect (mocked CDX)", () => {
+  it("finds a closer capture beyond the first 500 results", async () => {
+    const offsets: number[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const offset = Number(new URL(String(input)).searchParams.get("offset") ?? 0);
+      offsets.push(offset);
+      return new Response(cdxJson(offset === 0
+        ? Array.from({ length: 500 }, () => row("20070101000000"))
+        : [row("20070615000000")]));
+    };
+    const result = await resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl });
+    expect(result.snapshot.timestamp).toBe("20070615000000");
+    expect(offsets).toEqual([0, 500]);
+  });
+
+  it("does not cache incomplete results if a later page fails", async () => {
+    let calls = 0;
+    const fetchImpl: typeof fetch = async () => {
+      if (calls++ > 0) throw new Error("network down");
+      return new Response(cdxJson(Array.from({ length: 500 }, () => row("20070101000000"))));
+    };
+    await expect(resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl }))
+      .rejects.toMatchObject({ status: "archive_unavailable" });
+    expect(cdxCache.size).toBe(0);
+  });
   it("finds the closest snapshot and builds playback URLs", async () => {
     const fetchImpl = mockCdx([row("20070601000000"), row("20070620000000"), row("20071001000000")]);
     const r = await resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl });
