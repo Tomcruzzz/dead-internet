@@ -6,13 +6,12 @@ import {
   noSnapshot,
 } from "./errors";
 import { TtlCache } from "./cdx-cache";
+import { setTimeout as sleep } from "node:timers/promises";
 
 const CDX_BASE = "https://web.archive.org/cdx/search/cdx";
 const PLAYBACK_BASE = "https://web.archive.org/web";
-// Narrow window around the target date keeps the CDX response small (avoids
-// Wayback rate-limiting on heavily-archived sites). Dense sites (youtube, wikipedia)
-// have captures well within this window; very sparse sites may report no_snapshot.
-const WINDOW_MONTHS = 2;
+// Two bounded CDX queries preserve exact capture times even for dense archives.
+const WINDOW_MONTHS = 6;
 const CDX_TIMEOUT_MS = 15_000;
 const CDX_LIMIT = 500;
 
@@ -62,8 +61,15 @@ function formatCdxDate(date: Date): string {
   return `${date.getUTCFullYear()}${p(date.getUTCMonth() + 1)}${p(date.getUTCDate())}`;
 }
 
+function formatCdxTimestamp(date: Date): string {
+  return date.toISOString().slice(0, 19).replace(/\D/g, "");
+}
+
 function addMonthsUTC(date: Date, months: number): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, date.getUTCDate()));
+  const result = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
+  const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(date.getUTCDate(), lastDay));
+  return result;
 }
 
 export interface ParsedRequestedDate {
@@ -189,17 +195,16 @@ export interface QueryCdxOptions {
   fetchImpl?: typeof fetch;
   limit?: number;
   offset?: number;
+  signal?: AbortSignal;
 }
-
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // Fetch the CDX URL, retrying once on rate-limiting (429) or temporary
 // unavailability (503), honoring Retry-After when present.
-async function fetchCdx(requestUrl: string, fetchImpl: typeof fetch): Promise<Response> {
+async function fetchCdx(requestUrl: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<Response> {
   const doFetch = () =>
     fetchImpl(requestUrl, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(CDX_TIMEOUT_MS),
+      signal: AbortSignal.any([AbortSignal.timeout(CDX_TIMEOUT_MS), ...(signal ? [signal] : [])]),
     });
   let resp: Response;
   try {
@@ -213,8 +218,8 @@ async function fetchCdx(requestUrl: string, fetchImpl: typeof fetch): Promise<Re
     const retryAfter = Number(resp.headers.get("retry-after"));
     const delayMs =
       Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 10) * 1000 : 2000;
-    await sleep(delayMs);
     try {
+      await sleep(delayMs, undefined, { signal });
       resp = await doFetch();
     } catch (e) {
       throw archiveUnavailable(
@@ -227,8 +232,8 @@ async function fetchCdx(requestUrl: string, fetchImpl: typeof fetch): Promise<Re
 
 /**
  * Query the Wayback CDX index for HTML/200 captures of `url` in [fromDate, toDate].
- * `collapse=timestamp:8` keeps one capture per day, keeping the response small and
- * avoiding Wayback rate-limiting on heavily-archived sites.
+ * Keep full timestamp precision and do not collapse captures: even captures on
+ * the same day can differ in their distance from the requested instant.
  */
 export async function queryWaybackCdx(
   url: string,
@@ -239,17 +244,16 @@ export async function queryWaybackCdx(
   const fetchImpl = options.fetchImpl ?? fetch;
   const params = new URLSearchParams();
   params.set("url", url);
-  params.set("from", formatCdxDate(fromDate));
-  params.set("to", formatCdxDate(toDate));
+  params.set("from", formatCdxTimestamp(fromDate));
+  params.set("to", formatCdxTimestamp(toDate));
   params.set("output", "json");
   params.append("filter", "statuscode:200"); // append (not set): CDX takes multiple filters
   params.append("filter", "mimetype:text/html");
-  params.set("collapse", "timestamp:8");
   params.set("limit", String(options.limit ?? CDX_LIMIT));
   if (options.offset) params.set("offset", String(options.offset));
   const requestUrl = `${CDX_BASE}?${params.toString()}`;
 
-  const resp = await fetchCdx(requestUrl, fetchImpl);
+  const resp = await fetchCdx(requestUrl, fetchImpl, options.signal);
   if (!resp.ok) throw archiveUnavailable(`Archive returned HTTP ${resp.status}.`);
   let json: unknown;
   try {
@@ -297,11 +301,13 @@ export interface ResurrectResult {
   snapshot: SnapshotMeta;
   playback: PlaybackUrls;
   requestedDate: string;
+  searchWindow: { from: string; to: string };
 }
 
 export interface ResurrectOptions {
   /** Injectable for tests; defaults to the global fetch. */
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 /**
@@ -319,27 +325,29 @@ export async function resurrect(
 
   const fromDate = addMonthsUTC(target, -WINDOW_MONTHS);
   const toDate = addMonthsUTC(target, WINDOW_MONTHS);
+  toDate.setUTCHours(23, 59, 59, 0);
+  const searchWindow = { from: formatCdxDate(fromDate), to: formatCdxDate(toDate) };
+  const rangeLabel = `${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}`;
+  const signal = AbortSignal.any([
+    AbortSignal.timeout(45_000),
+    ...(options.signal ? [options.signal] : []),
+  ]);
 
   // Try the normalized URL first, then fall back to a www variant if needed.
   const variants = urlVariants(normalized);
   let allRows: CdxRow[] = [];
   for (const variant of variants) {
-    const cacheKey = `${variant}|${formatCdxDate(fromDate)}|${formatCdxDate(toDate)}`;
+    const cacheKey = `nearest-v2|${variant}|${formatCdxTimestamp(target)}|${searchWindow.from}|${searchWindow.to}`;
     let rows = cdxCache.get(cacheKey);
     if (!rows) {
-      rows = [];
-      // CDX is chronological: search every page before choosing or caching a result.
-      for (let page = 0; ; page++) {
-        if (page === 100) {
-          throw archiveUnavailable("Too many captures to search. Try a more specific page URL.");
-        }
-        const batch = await queryWaybackCdx(variant, fromDate, toDate, {
-          fetchImpl,
-          offset: page * CDX_LIMIT,
-        });
-        rows.push(...batch);
-        if (batch.length < CDX_LIMIT) break;
-      }
+      // The closest capture must be either the last at/before the target or
+      // the first at/after it. Negative CDX limits select the latest captures.
+      // Both halves must succeed before selecting or caching a result.
+      const [before, after] = await Promise.all([
+        queryWaybackCdx(variant, fromDate, target, { fetchImpl, limit: -1, signal }),
+        queryWaybackCdx(variant, target, toDate, { fetchImpl, limit: 1, signal }),
+      ]);
+      rows = [...before, ...after];
       cdxCache.set(cacheKey, rows);
     }
     allRows = allRows.concat(rows);
@@ -347,7 +355,7 @@ export async function resurrect(
   }
 
   if (allRows.length === 0) {
-    throw noSnapshot("No snapshots found for this URL near the requested date.");
+    throw noSnapshot(`No HTML snapshots found from ${rangeLabel}. Tried with and without www.`);
   }
 
   const closest = selectClosestSnapshot(allRows, target);
@@ -366,5 +374,5 @@ export async function resurrect(
     distanceDays: closest.distanceDays,
   };
   const playback = buildPlaybackUrls(closest.row.timestamp, closest.row.original);
-  return { snapshot, playback, requestedDate };
+  return { snapshot, playback, requestedDate, searchWindow };
 }

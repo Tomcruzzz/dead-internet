@@ -120,6 +120,23 @@ only as a secondary cross-check, never as the primary path.
 
 ## Closest-snapshot selection algorithm
 
+Implementation decision (2026-11-03): search an inclusive +/-6 calendar-month
+window, clamping month ends (for example, August 31 minus six months is February
+28 or 29). Query the last HTML/200 capture at or before the exact target with
+`limit=-1`, and the first at or after it with `limit=1`, in parallel. Compare those
+two candidates using the rules below. Do not collapse captures by day: that can
+discard the nearest capture. This bounds the response size without scanning every
+capture. Both halves must succeed before caching or returning a result. The overall
+lookup has a 45-second deadline, including variant fallback and retry waits.
+
+The API returns `searchWindow` (`from`/`to` in YYYYMMDD format) on success and the
+metadata panel displays that range. Empty-result messages include the same range.
+Cache keys include the target timestamp as well as URL and window, since the cached
+rows are nearest candidates rather than every capture in the window.
+
+CDX query limit behavior is documented in the
+[Internet Archive CDX server guide](https://github.com/internetarchive/wayback/tree/master/wayback-cdx-server#query-result-limits).
+
 1. Filter rows to `mimetype === "text/html"` and `statuscode === "200"`.
 2. Parse each `timestamp` (14-digit UTC) to a `Date`.
 3. Parse the requested `date` (YYYY or YYYY-MM or YYYY-MM-DD) to a target `Date` (missing

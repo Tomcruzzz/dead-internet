@@ -17,6 +17,7 @@ export function SnapshotMeta({
       <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
         <Row label="Requested" value={requestedDate} />
         <Row label="Captured" value={snapshot.displayDate} />
+        <Row label="Searched range (UTC)" value={`${displayRangeDate(data.searchWindow.from)} to ${displayRangeDate(data.searchWindow.to)}`} full />
         <Row label="Distance" value={`${snapshot.distanceDays} day${snapshot.distanceDays === 1 ? "" : "s"}`} />
         <Row label="Status" value={`HTTP ${snapshot.httpStatus}`} />
         <Row label="Type" value={snapshot.mimetype} />
@@ -35,6 +36,10 @@ export function SnapshotMeta({
       </div>
     </div>
   );
+}
+
+function displayRangeDate(date: string): string {
+  return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
 }
 
 function Row({ label, value, full }: { label: string; value: string; full?: boolean }) {

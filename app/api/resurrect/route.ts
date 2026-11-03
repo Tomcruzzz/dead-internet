@@ -35,11 +35,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { snapshot, playback, requestedDate } = await resurrect({ url, date });
+    const { snapshot, playback, requestedDate, searchWindow } = await resurrect({ url, date });
     return json(
       {
         status: "found",
         requestedDate,
+        searchWindow,
         snapshot,
         playback,
         source: "Internet Archive Wayback Machine",

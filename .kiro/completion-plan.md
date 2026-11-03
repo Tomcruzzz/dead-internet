@@ -10,7 +10,7 @@ Do not mark live browser acceptance complete from mocked tests or HTTP checks.
   - [x] Homepage serves successfully and the real YouTube lookup returns a capture.
   - [x] Repeatable HTTP checks for found, never archived, future, invalid input, playback.
   - [ ] Browser: visible archived content, metadata, provenance link, failure recovery.
-- [ ] 2. Correct archive lookup accuracy and report the searched range (tasks 2.1, 2.3).
+- [x] 2. Correct archive lookup accuracy and report the searched range (tasks 2.1, 2.3).
   Preserve individual capture timestamps; handle sparse archives and month boundaries;
   retain bounded requests, caching, and clear upstream failure states.
 - [ ] 3. Share URL/date validation between client and server (task 4.1).
@@ -54,4 +54,20 @@ are required by the current product guide. Preserve the sandbox and provenance r
 - HTTP checks can be repeated with `npm run smoke` against the running app;
   set `SMOKE_BASE_URL` to test another deployment.
 
-Next action: implement step 2; browser acceptance remains pending.
+### Step 2: exact nearest lookup
+
+- Replaced daily collapse and exhaustive pagination with latest-before / earliest-after
+  CDX queries at full timestamp precision, in an inclusive +/-6-month window.
+- Clamped calendar month ends, added a total 45-second lookup deadline, and keyed
+  the candidate cache by the target instant as well as the range and URL.
+- Success metadata and no-result messages now show the searched range.
+- Regression coverage: dense archives, multiple captures on the previous day,
+  sparse archives, leap-year range boundary, partial-query failure, caching.
+- `npm test`: 49 passed; lint and production build passed. All six live HTTP smoke
+  checks passed again; API confirms the searched range 20061215 to 20071215.
+- Updated the Kiro task checkboxes for implemented and verified work. Frontend
+  validation, loading/success alignment, playback recovery, and browser acceptance
+  remain unchecked.
+
+Next action: step 3 shared validation.
+Browser acceptance remains pending.

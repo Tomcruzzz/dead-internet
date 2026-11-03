@@ -51,11 +51,15 @@ function cdxJson(rows: string[][]) {
   return JSON.stringify([HEADER, ...rows]);
 }
 
-// Mock fetch returning the given CDX rows (ignores the request URL).
+// Model CDX date bounds and chronological limits, including latest (-1).
 function mockCdx(rows: string[][]): typeof fetch {
-  const body = rows.length === 0 ? "[]" : cdxJson(rows);
-  return (async () =>
-    new Response(body, { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
+  return async (input) => {
+    const params = new URL(String(input)).searchParams;
+    const matches = rows.filter((r) => r[1] >= params.get("from")! && r[1] <= params.get("to")!)
+      .sort((a, b) => a[1].localeCompare(b[1]));
+    const limit = Number(params.get("limit"));
+    return new Response(cdxJson(limit < 0 ? matches.slice(limit) : matches.slice(0, limit)));
+  };
 }
 
 // Mock fetch that returns different responses per call (for www-fallback testing).
@@ -195,29 +199,58 @@ describe("selectClosestSnapshot", () => {
 });
 
 describe("resurrect (mocked CDX)", () => {
-  it("finds a closer capture beyond the first 500 results", async () => {
-    const offsets: number[] = [];
-    const fetchImpl: typeof fetch = async (input) => {
-      const offset = Number(new URL(String(input)).searchParams.get("offset") ?? 0);
-      offsets.push(offset);
-      return new Response(cdxJson(offset === 0
-        ? Array.from({ length: 500 }, () => row("20070101000000"))
-        : [row("20070615000000")]));
+  it("finds the nearest capture in dense archives without paging or daily collapse", async () => {
+    const requests: URL[] = [];
+    const archive = mockCdx([
+      ...Array.from({ length: 500 }, () => row("20070101000000")),
+      row("20070614000100"), row("20070614235959"), row("20070615010000"),
+    ]);
+    const fetchImpl: typeof fetch = async (input, init) => {
+      requests.push(new URL(String(input)));
+      return archive(input, init);
     };
     const result = await resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl });
-    expect(result.snapshot.timestamp).toBe("20070615000000");
-    expect(offsets).toEqual([0, 500]);
+    expect(result.snapshot.timestamp).toBe("20070614235959");
+    expect(requests).toHaveLength(2);
+    expect(requests.map((r) => r.searchParams.get("limit"))).toEqual(["-1", "1"]);
+    expect(requests.every((r) => !r.searchParams.has("collapse"))).toBe(true);
   });
 
-  it("does not cache incomplete results if a later page fails", async () => {
+  it("does not cache incomplete results if either side fails", async () => {
     let calls = 0;
     const fetchImpl: typeof fetch = async () => {
       if (calls++ > 0) throw new Error("network down");
-      return new Response(cdxJson(Array.from({ length: 500 }, () => row("20070101000000"))));
+      return new Response(cdxJson([row("20070614000000")]));
     };
     await expect(resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl }))
       .rejects.toMatchObject({ status: "archive_unavailable" });
     expect(cdxCache.size).toBe(0);
+  });
+  it("finds sparse captures beyond the old two-month window", async () => {
+    const r = await resurrect({ url: "youtube.com", date: "2007-06-15" }, {
+      fetchImpl: mockCdx([row("20070201000000")]),
+    });
+    expect(r.snapshot.timestamp).toBe("20070201000000");
+    expect(r.searchWindow).toEqual({ from: "20061215", to: "20071215" });
+  });
+  it("clamps month ends and includes the last day of the searched range", async () => {
+    const r = await resurrect({ url: "youtube.com", date: "2007-08-31" }, {
+      fetchImpl: mockCdx([row("20080229235959")]),
+    });
+    expect(r.searchWindow).toEqual({ from: "20070228", to: "20080229" });
+    expect(r.snapshot.timestamp).toBe("20080229235959");
+  });
+  it("includes the searched range when there are no captures", async () => {
+    await expect(resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl: mockCdx([]) }))
+      .rejects.toMatchObject({ status: "no_snapshot", message: expect.stringContaining("December 15, 2006 to December 15, 2007") });
+  });
+  it("caches both candidates for repeated requests", async () => {
+    let calls = 0;
+    const archive = mockCdx([row("20070614235959")]);
+    const fetchImpl: typeof fetch = async (input, init) => { calls++; return archive(input, init); };
+    await resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl });
+    await resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl });
+    expect(calls).toBe(2);
   });
   it("finds the closest snapshot and builds playback URLs", async () => {
     const fetchImpl = mockCdx([row("20070601000000"), row("20070620000000"), row("20071001000000")]);
@@ -230,7 +263,7 @@ describe("resurrect (mocked CDX)", () => {
   });
 
   it("falls back to a www variant when the first returns nothing", async () => {
-    const fetchImpl = mockCdxSequence([[], [row("20070620000000", { original: "http://www.youtube.com/" })]]);
+    const fetchImpl = mockCdxSequence([[], [], [], [row("20070620000000", { original: "http://www.youtube.com/" })]]);
     const r = await resurrect({ url: "youtube.com", date: "2007-06-15" }, { fetchImpl });
     expect(r.snapshot.timestamp).toBe("20070620000000");
     expect(r.snapshot.originalUrl).toBe("http://www.youtube.com/");

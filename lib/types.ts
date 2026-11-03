@@ -40,6 +40,8 @@ export interface PlaybackUrls {
 export interface ResurrectFoundResponse {
   status: "found";
   requestedDate: string;
+  /** Inclusive searched dates in YYYYMMDD format. */
+  searchWindow: { from: string; to: string };
   snapshot: SnapshotMeta;
   playback: PlaybackUrls;
   /** Human-readable provenance source label. */
