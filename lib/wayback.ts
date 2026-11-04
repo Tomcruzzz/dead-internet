@@ -140,6 +140,7 @@ export interface QueryCdxOptions {
   limit?: number;
   offset?: number;
   signal?: AbortSignal;
+  collapse?: "timestamp:6";
 }
 
 // Fetch the CDX URL, retrying once on rate-limiting (429) or temporary
@@ -194,6 +195,7 @@ export async function queryWaybackCdx(
   params.append("filter", "statuscode:200"); // append (not set): CDX takes multiple filters
   params.append("filter", "mimetype:text/html");
   params.set("limit", String(options.limit ?? CDX_LIMIT));
+  if (options.collapse) params.set("collapse", options.collapse);
   if (options.offset) params.set("offset", String(options.offset));
   const requestUrl = `${CDX_BASE}?${params.toString()}`;
 

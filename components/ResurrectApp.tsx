@@ -5,6 +5,7 @@ import { ResurrectForm } from "./ResurrectForm";
 import { LoadingSequence } from "./LoadingSequence";
 import { SnapshotMeta as SnapshotMetaPanel } from "./SnapshotMeta";
 import { SnapshotFrame } from "./SnapshotFrame";
+import { CaptureTimeline } from "./CaptureTimeline";
 import type { ResurrectResponse } from "@/lib/types";
 
 type Phase = "idle" | "loading" | "done";
@@ -12,9 +13,11 @@ type Phase = "idle" | "loading" | "done";
 export function ResurrectApp() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [response, setResponse] = useState<ResurrectResponse | null>(null);
+  const [request, setRequest] = useState({ url: "", date: "" });
 
   async function handleResurrect(url: string, date: string) {
     setPhase("loading");
+    setRequest({ url, date });
     setResponse(null);
     try {
       const res = await fetch("/api/resurrect", {
@@ -57,7 +60,10 @@ export function ResurrectApp() {
             <>
               <p role="status" className="font-mono text-sm text-neutral-300">SNAPSHOT FOUND</p>
               <SnapshotMetaPanel data={response} requestedDate={response.requestedDate} />
-              <SnapshotFrame key={response.playback.iframeUrl} playback={response.playback} />
+              <CaptureTimeline url={response.snapshot.originalUrl} date={request.date}
+                timestamp={response.snapshot.timestamp}
+                onSelect={(capture, searchWindow) => setResponse({ ...response, ...capture, searchWindow })} />
+              <SnapshotFrame playback={response.playback} />
               <div>
                 <button
                   onClick={handleReset}

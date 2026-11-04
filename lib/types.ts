@@ -55,3 +55,17 @@ export interface ResurrectErrorResponse {
 }
 
 export type ResurrectResponse = ResurrectFoundResponse | ResurrectErrorResponse;
+
+export interface TimelineCapture {
+  snapshot: SnapshotMeta;
+  playback: PlaybackUrls;
+}
+
+export interface TimelineFoundResponse {
+  status: "found";
+  captures: TimelineCapture[];
+  searchWindow: { from: string; to: string };
+  truncated: boolean;
+}
+
+export type TimelineResponse = TimelineFoundResponse | ResurrectErrorResponse;

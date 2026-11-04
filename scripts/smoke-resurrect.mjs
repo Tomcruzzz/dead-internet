@@ -50,6 +50,25 @@ await check("unarchived URL", async () => {
   assert.equal(data.status, "no_snapshot", data.message);
   return { httpStatus, status: data.status };
 });
+await check("monthly capture timeline", async () => {
+  assert.ok(found, "Historical lookup must succeed before testing the timeline.");
+  const response = await fetch(new URL("/api/timeline", base), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: found.snapshot.originalUrl, date: "2007-06-15", year: 2007 }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.status, "found", data.message);
+  assert.ok(data.captures.length > 0 && data.captures.length <= 12);
+  assert.equal(new Set(data.captures.map(c => c.snapshot.timestamp.slice(0, 6))).size, data.captures.length);
+  for (const capture of data.captures) {
+    assert.ok(capture.snapshot.timestamp.startsWith("2007"));
+    assert.ok(capture.playback.iframeUrl.includes(`${capture.snapshot.timestamp}if_/`));
+  }
+  return { httpStatus: response.status, samples: data.captures.length, truncated: data.truncated };
+});
 await check("far future", async () => {
   const { httpStatus, data } = await lookup("youtube.com", "2099-06-15");
   assert.equal(httpStatus, 200);
