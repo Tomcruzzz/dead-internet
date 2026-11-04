@@ -1,7 +1,9 @@
+import { normalizeUrl, parseRequestedDate, formatDateForDisplay } from "./validation";
+export { normalizeUrl, parseRequestedDate, formatDateForDisplay } from "./validation";
+export type { ParsedRequestedDate } from "./validation";
 import type { PlaybackUrls, ResurrectRequest, SnapshotMeta } from "./types";
 import {
   archiveUnavailable,
-  invalidInput,
   noHtmlSnapshot,
   noSnapshot,
 } from "./errors";
@@ -47,15 +49,6 @@ export function parseCdxTimestamp(ts: string): Date {
   );
 }
 
-export function formatDateForDisplay(date: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(date);
-}
-
 function formatCdxDate(date: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${date.getUTCFullYear()}${p(date.getUTCMonth() + 1)}${p(date.getUTCDate())}`;
@@ -70,55 +63,6 @@ function addMonthsUTC(date: Date, months: number): Date {
   const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
   result.setUTCDate(Math.min(date.getUTCDate(), lastDay));
   return result;
-}
-
-export interface ParsedRequestedDate {
-  date: Date;
-  display: string;
-}
-
-/** Parse a user date (YYYY | YYYY-MM | YYYY-MM-DD) into a target Date + display string. */
-export function parseRequestedDate(input: string): ParsedRequestedDate {
-  const trimmed = input.trim();
-  if (!trimmed) throw invalidInput("Date is required.");
-  const m = /^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/.exec(trimmed);
-  if (!m) throw invalidInput("Invalid date. Use YYYY, YYYY-MM, or YYYY-MM-DD.");
-  const year = Number(m[1]);
-  const month = m[2] ? Number(m[2]) : 1;
-  const day = m[3] ? Number(m[3]) : 1;
-  if (month < 1 || month > 12) throw invalidInput("Invalid month.");
-  if (day < 1 || day > 31) throw invalidInput("Invalid day.");
-  if (year < 1900) throw invalidInput("Invalid year.");
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    Number.isNaN(date.getTime()) ||
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) throw invalidInput("Invalid date.");
-  return { date, display: formatDateForDisplay(date) };
-}
-
-// ---------------------------------------------------------------------------
-// URL helpers
-// ---------------------------------------------------------------------------
-
-/** Normalize a user-entered URL: default scheme, require a dotted domain. */
-export function normalizeUrl(input: string): string {
-  const trimmed = input.trim();
-  if (!trimmed) throw invalidInput("URL is required.");
-  let withScheme = trimmed;
-  if (!/^https?:\/\//i.test(withScheme)) withScheme = "http://" + withScheme;
-  let parsed: URL;
-  try {
-    parsed = new URL(withScheme);
-  } catch {
-    throw invalidInput("Invalid URL: could not be parsed.");
-  }
-  if (!parsed.hostname || !parsed.hostname.includes(".")) {
-    throw invalidInput("Invalid URL: must include a domain name.");
-  }
-  return parsed.toString();
 }
 
 /** Candidate URL variants to try when an exact CDX match returns nothing. */

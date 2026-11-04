@@ -23,14 +23,14 @@ tasks are skipped by "Run all Tasks".
 - [x] 3.2 Graceful handling of CDX timeout/network failure → `archive_unavailable` (never throw to client) (depends on 3.1)
 
 ## 4. Frontend — resurrect flow
-- [ ] 4.1 Build `ResurrectForm` (URL input + date input + submit) with client-side validation (depends on 1.1)
-- [ ] 4.2 Implement loading sequence states ("CONTACTING THE DEAD…", "SEARCHING ARCHIVES…", "SNAPSHOT FOUND") (depends on 4.1)
+- [x] 4.1 Build `ResurrectForm` (URL input + date input + submit) with client-side validation (depends on 1.1)
+- [x] 4.2 Implement loading sequence states ("CONTACTING THE DEAD…", "SEARCHING ARCHIVES…", "SNAPSHOT FOUND") (depends on 4.1)
 - [x] 4.3 Build `SnapshotMeta` panel: snapshot date, requested date, original URL, HTTP status, distance in days, "View on Wayback Machine" provenance link, "sourced from Internet Archive" label (depends on 3.1)
-- [ ] 4.4 Build `SnapshotFrame` sandboxed cross-origin iframe viewer (`sandbox="allow-scripts"`, no `allow-same-origin`, no `allow-top-navigation`) with iframe load-failure message + optional static-safe `sandbox=""` mode (depends on 3.1)
+- [x] 4.4 Build `SnapshotFrame` sandboxed cross-origin iframe viewer (`sandbox="allow-scripts"`, no `allow-same-origin`, no `allow-top-navigation`) with iframe load-failure message + optional static-safe `sandbox=""` mode (depends on 3.1)
 
 ## 5. Wiring & end-to-end
 - [x] 5.1 Wire `ResurrectForm` → `POST /api/resurrect` → render `SnapshotMeta` + `SnapshotFrame` (depends on 4.3, 4.4, 3.1)
-- [ ] 5.2 Handle all response statuses in the UI: `found`, `no_snapshot`, `archive_unavailable`, `invalid_input`, `no_html_snapshot`, and iframe load failure (depends on 5.1)
+- [x] 5.2 Handle all response statuses in the UI: `found`, `no_snapshot`, `archive_unavailable`, `invalid_input`, `no_html_snapshot`, and iframe load failure (depends on 5.1)
 
 ## 6. Tests
 - [x] 6.1 Unit tests: closest-snapshot selection (tie-break, non-html/non-200 filtering, empty) (depends on 2.3)
@@ -40,4 +40,4 @@ tasks are skipped by "Run all Tasks".
 
 ## 7. Polish [optional]
 - [ ] 7.1 Add the homepage year-slider visual (non-functional styling only) [optional]
-- [ ] 7.2 Add a short README with run instructions [optional]
+- [x] 7.2 Add a short README with run instructions [optional]

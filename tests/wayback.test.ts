@@ -1,16 +1,15 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   parseCdxTimestamp,
-  formatDateForDisplay,
-  parseRequestedDate,
-  normalizeUrl,
   urlVariants,
   buildPlaybackUrls,
   parseCdxResponse,
+  queryWaybackCdx,
   selectClosestSnapshot,
   resurrect,
   cdxCache,
 } from "@/lib/wayback";
+import { formatDateForDisplay, parseRequestedDate, normalizeUrl } from "@/lib/validation";
 import { ResurrectError } from "@/lib/errors";
 import type { CdxRow } from "@/lib/wayback";
 
@@ -75,6 +74,42 @@ function mockCdxSequence(responses: string[][][]): typeof fetch {
 
 beforeEach(() => cdxCache.clear());
 
+describe("CDX recovery", () => {
+  const from = new Date("2007-01-01T00:00:00Z");
+  const to = new Date("2007-12-31T00:00:00Z");
+  it.each([429, 503])("retries HTTP %s once and recovers", async (status) => {
+    let calls = 0;
+    const fetchImpl: typeof fetch = async () => ++calls === 1
+      ? new Response("busy", { status, headers: { "Retry-After": "0.001" } })
+      : new Response(cdxJson([row("20070615120905")]));
+    const result = await queryWaybackCdx("http://youtube.com/", from, to, { fetchImpl });
+    expect(calls).toBe(2);
+    expect(result[0].timestamp).toBe("20070615120905");
+  });
+  it("stops after a failed retry", async () => {
+    let calls = 0;
+    const fetchImpl: typeof fetch = async () => {
+      calls++;
+      return new Response("busy", { status: 503, headers: { "Retry-After": "0.001" } });
+    };
+    await expect(queryWaybackCdx("http://youtube.com/", from, to, { fetchImpl }))
+      .rejects.toMatchObject({ status: "archive_unavailable" });
+    expect(calls).toBe(2);
+  });
+  it("cancels the retry wait when the caller aborts", async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    const fetchImpl: typeof fetch = async () => {
+      calls++;
+      controller.abort();
+      return new Response("busy", { status: 429, headers: { "Retry-After": "10" } });
+    };
+    await expect(queryWaybackCdx("http://youtube.com/", from, to, { fetchImpl, signal: controller.signal }))
+      .rejects.toMatchObject({ status: "archive_unavailable" });
+    expect(calls).toBe(1);
+  });
+});
+
 describe("parseCdxTimestamp", () => {
   it("parses a 14-digit UTC timestamp", () => {
     expect(parseCdxTimestamp("20070615120905").toISOString()).toBe("2007-06-15T12:09:05.000Z");
@@ -121,6 +156,16 @@ describe("parseRequestedDate", () => {
 });
 
 describe("normalizeUrl", () => {
+  it.each(["mailto:user@example.com", "ftp://example.com", "javascript:alert(1)", "https://user:pass@example.com"])(
+    "rejects unsupported website input %s",
+    (input) => expect(() => normalizeUrl(input)).toThrow(ResurrectError),
+  );
+  it("removes fragments while preserving the path and query", () => {
+    expect(normalizeUrl("https://example.com/page?q=hello#section")).toBe("https://example.com/page?q=hello");
+  });
+  it("accepts a domain with a port", () => {
+    expect(normalizeUrl("example.com:8080/path")).toBe("http://example.com:8080/path");
+  });
   it("adds an http scheme when missing", () => {
     expect(normalizeUrl("youtube.com")).toBe("http://youtube.com/");
   });

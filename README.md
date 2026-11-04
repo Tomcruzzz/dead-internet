@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dead Internet
 
-## Getting Started
+Find a historical website snapshot using the Internet Archive Wayback Machine.
 
-First, run the development server:
+## Run locally
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Install dependencies with `npm ci`, then run `npm run dev` and open
+http://localhost:3000. For production, run `npm run build` then `npm start`.
+Use a Node.js version supported by the installed Next.js package.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Enter a website such as `youtube.com` and a date such as `2007-06-15`.
+Dates accept YYYY, YYYY-MM, or YYYY-MM-DD; omitted parts default to January/day 1.
+The app searches within six calendar months of the target, tries with and without
+www, and displays the nearest successful HTML capture and its source link.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Playback and recovery
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Archived pages load in an isolated Wayback iframe. Use **Retry snapshot** to reload,
+**Use static safe mode** to disable archived scripts, or **Open on Wayback** to view
+the source directly. Static mode may omit content that requires JavaScript.
+Neither mode allows archived pages to navigate the top-level app or access its origin.
 
-## Learn More
+A viewer load event does not prove that the archived page rendered successfully.
+Cross-origin restrictions prevent checking its contents; missing resources, blank
+pages, and archive errors can still occur. Recovery controls remain available.
 
-To learn more about Next.js, take a look at the following resources:
+Archive lookup requests have a 45-second server deadline and the client stops
+waiting after 60 seconds. Archive access requires a working Internet connection.
+No archive API key or environment variables are required.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Verification
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `npm test`: unit and mocked API regression tests.
+- `npm run lint`: lint checks.
+- `npm run build`: production compilation and type checking.
+- `npm run smoke`: real-network HTTP checks against a running app on port 3000.
+  Set `SMOKE_BASE_URL` to test another address.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+HTTP smoke checks cover a real historical lookup, missing snapshots, future dates,
+invalid dates, and playback HTTP content. They do not prove visible iframe rendering.
+Browser acceptance remains tracked in `.kiro/completion-plan.md`.

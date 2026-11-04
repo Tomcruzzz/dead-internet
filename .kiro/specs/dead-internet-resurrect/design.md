@@ -28,7 +28,8 @@ components/
   SnapshotFrame.tsx             # sandboxed cross-origin iframe viewer
 lib/
   types.ts                      # shared request/response/error types
-  wayback.ts                    # CDX client, URL normalization, closest selection, playback URLs
+  validation.ts                 # browser-safe URL/date validation shared with the server
+  wayback.ts                    # CDX client, closest selection, playback URLs
   cdx-cache.ts                  # in-memory TTL cache for CDX responses
   errors.ts                     # typed error model + http status mapping
 ```
@@ -89,7 +90,10 @@ and the UI renders the matching state.
   (no scripts) for maximum safety on pages that render server-side.
 - We never fetch, parse, or inject archived HTML into our app's own DOM in Milestone 1.
   (That is a Milestone 3 concern for MUTATE and requires a full rewriting proxy + sanitizer.)
-- If the iframe fails to load (onError / timeout), show an in-app "snapshot could not be rendered" message; the provenance link still lets the user open it directly on Wayback.
+- Each retry or mode change remounts the iframe and starts an independent 20-second
+  slow-load timer. Show reported errors and slow loads, but never treat a cross-origin
+  load event as proof of successful rendering. Keep retry, mode switching, and the
+  canonical Wayback link available after every outcome.
 
 ## Archive API details
 

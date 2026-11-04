@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const DATE_RE = /^\d{4}(-\d{2}(-\d{2})?)?$/;
+import { normalizeUrl, parseRequestedDate } from "@/lib/validation";
 
 export function ResurrectForm({
   onSubmit,
@@ -17,14 +16,18 @@ export function ResurrectForm({
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (disabled) return;
     const u = url.trim();
     const d = date.trim();
     if (!u) {
       setError("Enter a URL or domain.");
       return;
     }
-    if (!DATE_RE.test(d)) {
-      setError("Date format: YYYY, YYYY-MM, or YYYY-MM-DD.");
+    try {
+      normalizeUrl(u);
+      parseRequestedDate(d);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Check the website and date.");
       return;
     }
     setError(null);
@@ -61,7 +64,7 @@ export function ResurrectForm({
           className="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 outline-none focus:border-neutral-500"
         />
       </div>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       <button
         type="submit"
         disabled={disabled}

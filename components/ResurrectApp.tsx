@@ -21,6 +21,7 @@ export function ResurrectApp() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, date }),
+        signal: AbortSignal.timeout(60_000),
       });
       const data = (await res.json()) as ResurrectResponse;
       setResponse(data);
@@ -54,6 +55,7 @@ export function ResurrectApp() {
         <div className="mt-8 space-y-6">
           {response.status === "found" ? (
             <>
+              <p role="status" className="font-mono text-sm text-neutral-300">SNAPSHOT FOUND</p>
               <SnapshotMetaPanel data={response} requestedDate={response.requestedDate} />
               <SnapshotFrame key={response.playback.iframeUrl} playback={response.playback} />
               <div>

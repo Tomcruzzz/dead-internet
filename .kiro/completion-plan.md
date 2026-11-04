@@ -13,8 +13,8 @@ Do not mark live browser acceptance complete from mocked tests or HTTP checks.
 - [x] 2. Correct archive lookup accuracy and report the searched range (tasks 2.1, 2.3).
   Preserve individual capture timestamps; handle sparse archives and month boundaries;
   retain bounded requests, caching, and clear upstream failure states.
-- [ ] 3. Share URL/date validation between client and server (task 4.1).
-- [ ] 4. Finish playback recovery: retry, static safe mode, honest load status (4.4, 5.2).
+- [x] 3. Share URL/date validation between client and server (task 4.1).
+- [x] 4. Finish playback recovery: retry, static safe mode, honest load status (4.4, 5.2).
 - [ ] 5. Cover retries/timeouts, input validation, and frontend state transitions (6.1-6.4).
 - [ ] 6. Finish success/loading messaging, README, and reconcile specs/tasks (4.2, 7.2).
 - [ ] 7. Pass final build/lint/tests and real browser acceptance. Close Milestone 1.
@@ -69,5 +69,26 @@ are required by the current product guide. Preserve the sandbox and provenance r
   validation, loading/success alignment, playback recovery, and browser acceptance
   remain unchecked.
 
-Next action: step 3 shared validation.
+Next action: retry/timeout regression coverage and browser acceptance.
 Browser acceptance remains pending.
+
+### 2026-11-04: shared validation and playback recovery
+
+- Shared URL/calendar validation now runs in the form and on the server. Rejects
+  unsupported protocols and embedded credentials; strips fragments from lookups.
+- Added retry and static safe mode controls. Each URL, retry, or mode change remounts
+  the iframe and resets its 20-second slow-load timer. Sandbox stays allow-scripts
+  or empty, without same-origin or top-navigation permissions.
+- Viewer status distinguishes loading, slow, load event, and reported error. A load
+  event is explicitly not evidence that historical content rendered correctly.
+- Added SNAPSHOT FOUND messaging, accessible status announcements, a 60-second
+  client request timeout, and project-specific README instructions.
+- Browser acceptance attempted, but Computer Use stopped because it could not
+  determine the current browser URL confidently enough to enforce policy.
+  Visible playback, retry/mode interactions, and browser failure recovery remain open.
+
+- Verification: 59 tests passed, lint passed, production build passed, and all six
+  real-network HTTP smoke checks passed against http://localhost:3005. The historical
+  YouTube query returned capture 20070614120959 and playback returned HTML HTTP 200.
+- Added regression coverage for 429/503 retry recovery, retry exhaustion, and caller
+  cancellation during Retry-After. Frontend interaction automation remains pending.
