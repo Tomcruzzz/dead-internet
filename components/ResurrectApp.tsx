@@ -6,6 +6,7 @@ import { LoadingSequence } from "./LoadingSequence";
 import { SnapshotMeta as SnapshotMetaPanel } from "./SnapshotMeta";
 import { SnapshotFrame } from "./SnapshotFrame";
 import { CaptureTimeline } from "./CaptureTimeline";
+import { HistorianPanel } from "./HistorianPanel";
 import type { ResurrectResponse } from "@/lib/types";
 
 type Phase = "idle" | "loading" | "done";
@@ -64,6 +65,8 @@ export function ResurrectApp() {
                 timestamp={response.snapshot.timestamp}
                 onSelect={(capture, searchWindow) => setResponse({ ...response, ...capture, searchWindow })} />
               <SnapshotFrame playback={response.playback} />
+              <HistorianPanel key={`${response.snapshot.originalUrl}|${request.date}|${response.snapshot.timestamp}`}
+                context={{ url: response.snapshot.originalUrl, requestedDate: request.date, timestamp: response.snapshot.timestamp }} />
               <div>
                 <button
                   onClick={handleReset}

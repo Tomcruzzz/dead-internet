@@ -2,6 +2,37 @@
 
 Find a historical website snapshot using the Internet Archive Wayback Machine.
 
+## 404 AI Historian (Feature 1 PoC)
+
+The new Kiro spec is in [.kiro/specs/dead-internet-ai](.kiro/specs/dead-internet-ai/requirements.md).
+AI Mutate and AI Resurrection are design-only; this increment implements only 404.
+
+1. Copy `.env.example` to ignored `.env.local` and set `GEMINI_API_KEY` there.
+   Never paste a key into the app or use a `NEXT_PUBLIC_` key variable.
+2. Default model: `gemini-3.8-flash`; optional `GEMINI_MODEL` is server-side configuration.
+3. Restart the app after changing environment values. RESURRECT works without a key.
+4. Find a capture in Browse archives. The contextual **404 AI Historian** panel appears
+   below the original viewer. Review evidence without a model call, or ask a question.
+
+404 verifies the exact capture with CDX, retrieves bounded archive text, and uses the
+official server-only `@google/genai` SDK. Answers separate evidence-backed observations,
+inference and gaps; each claim needs a known source and matching quote. This validates
+source linkage, not semantic truth: review the excerpts. Unsupported history should be
+reported as missing evidence. A single text capture does not establish visual design,
+site evolution, internet culture, or missing-resource completeness.
+
+Questions and bounded excerpts go to Google Gemini. No durable chat history or prompt/key
+logs are kept. A short-lived process cache avoids repeat calls; original retrieval and
+generation times remain visible. Defaults: 50 attempts/day/process, 6/minute, two concurrent
+model requests, 8000 counted input tokens and 2048 output tokens. Counters reset on restart;
+they are not a hard billing cap. `AI_HISTORIAN_ENABLED=false` disables generation.
+
+Run `npm run smoke:historian` against a running app (`SMOKE_BASE_URL` overrides port 3000).
+It checks real archive evidence and calls Gemini only if the server is configured. It
+explicitly reports skipped live generation; `HISTORIAN_SMOKE_REQUIRE_GEMINI=1` makes that
+a failing check. Keep paid calls small. See the spec's research/costs and Cloud Run design
+before deploying. No cloud resources or reconstruction assets are created by this PoC.
+
 ## Run locally
 
 Install dependencies with `npm ci`, then run `npm run dev` and open

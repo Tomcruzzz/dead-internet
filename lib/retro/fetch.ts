@@ -40,6 +40,7 @@ export interface PageResponse {
   location?: string;
   contentType: string;
   body: Buffer;
+  mementoDatetime?: string;
 }
 
 export interface ReadPolicy {
@@ -102,7 +103,9 @@ export async function readPage(url: URL, address: LookupAddress, signal: AbortSi
         }
         chunks.push(chunk);
       });
-      response.on("end", () => resolve({ status, contentType, body: Buffer.concat(chunks) }));
+      response.on("end", () => resolve({ status, contentType, body: Buffer.concat(chunks),
+        ...(typeof response.headers["memento-datetime"] === "string" ? { mementoDatetime: response.headers["memento-datetime"] } : {}),
+      }));
       response.on("error", reject);
     });
     request.on("error", reject);
@@ -125,7 +128,7 @@ export async function fetchPublicPage(input: string, options: {
   read?: typeof readPage;
   policy?: ReadPolicy;
   allowedHosts?: string[];
-} = {}): Promise<{ body: Buffer; url: string; contentType: string }> {
+} = {}): Promise<{ body: Buffer; url: string; contentType: string; mementoDatetime?: string }> {
   let url = retroUrl(input);
   const signal = AbortSignal.any([AbortSignal.timeout(20_000), ...(options.signal ? [options.signal] : [])]);
   try {
@@ -149,7 +152,9 @@ export async function fetchPublicPage(input: string, options: {
         url = retroUrl(new URL(result.location, url).toString());
         continue;
       }
-      return { body: result.body, url: url.toString(), contentType: result.contentType };
+      return { body: result.body, url: url.toString(), contentType: result.contentType,
+        ...(result.mementoDatetime ? { mementoDatetime: result.mementoDatetime } : {}),
+      };
     }
     throw new RetroError("unavailable", "The website could not be loaded.");
   } catch (error) {
