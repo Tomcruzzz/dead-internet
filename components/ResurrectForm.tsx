@@ -35,7 +35,7 @@ export function ResurrectForm({
   }
 
   return (
-    <form onSubmit={submit} className="max-w-xl space-y-4">
+    <form onSubmit={submit} className="archive-search grid gap-4 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-5 sm:grid-cols-[1fr_180px_auto] sm:items-end sm:p-6">
       <div className="flex flex-col gap-1">
         <label htmlFor="url" className="text-sm text-neutral-400">
           Website
@@ -47,7 +47,7 @@ export function ResurrectForm({
           placeholder="youtube.com"
           autoComplete="off"
           spellCheck={false}
-          className="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 outline-none focus:border-neutral-500"
+          className="min-w-0 rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-3 outline-none focus:border-lime-300"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -61,14 +61,14 @@ export function ResurrectForm({
           placeholder="2007-06-15"
           autoComplete="off"
           spellCheck={false}
-          className="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 outline-none focus:border-neutral-500"
+          className="min-w-0 rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-3 outline-none focus:border-lime-300"
         />
       </div>
-      {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-400 sm:col-span-3">{error}</p>}
       <button
         type="submit"
         disabled={disabled}
-        className="rounded bg-neutral-100 px-4 py-2 font-medium text-neutral-950 disabled:opacity-50"
+        className="rounded-lg bg-lime-300 px-5 py-3 font-medium text-neutral-950 transition-colors hover:bg-lime-200 disabled:opacity-50"
       >
         {disabled ? "RESURRECTING…" : "FIND SNAPSHOT"}
       </button>

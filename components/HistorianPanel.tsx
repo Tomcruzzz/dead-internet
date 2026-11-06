@@ -45,7 +45,7 @@ export function HistorianPanel({ context }: { context: HistorianContext }) {
     "Why did this design look like this?", "How did this website evolve?", "What was internet culture like during this period?",
   ];
   return (
-    <section aria-label="404 AI Historian" className="rounded border border-violet-900 bg-violet-950/10 p-5">
+    <section id="historian" aria-label="404 AI Historian" className="historian-panel scroll-mt-6 rounded-2xl border border-violet-400/30 bg-violet-950/10 p-5 sm:p-7">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="font-mono text-lg text-violet-200">404 · AI Historian</h2>
           <p className="mt-1 text-sm text-neutral-400">Ask about this capture, with archive evidence beside the answer.</p></div>
