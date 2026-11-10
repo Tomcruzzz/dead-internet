@@ -26,5 +26,15 @@ button:not(:disabled), summary { cursor: pointer; }
 .workspace-link:hover { background: #262626; }
 .ai-link { color: #ddd6fe; border-color: #69558c; background: #a78bfa12; }
 .historian-panel { box-shadow: 0 0 65px #8b5cf608; }
+.studio-tag { padding: 6px 9px; border: 1px solid #282828; border-radius: 5px; }
+.engine-picker { background: linear-gradient(125deg,#1a1424aa,#121212 65%); }
+.engine-option { display: block; padding: 18px; border: 1px solid #333; border-radius: 11px; cursor: pointer; background: #1119; }
+.engine-option:hover { border-color: #666; }
+.engine-option-ai { border-color: #b09ad6; background: #a78bfa0d; box-shadow: inset 0 0 0 1px #a78bfa33; }
+.engine-option-classic { border-color: #bba55a; background: #fcd34d06; }
+.engine-picker:disabled .engine-option,fieldset:disabled .era-option { cursor: wait; opacity: .6; }
+.era-option { transition: border-color .15s, background-color .15s; }
+.studio-source { box-shadow: 0 16px 60px #0003; }
+.preview-browser { box-shadow: 0 16px 60px #0005; }
 @media(max-width: 640px) { .brand-version { display: none; } .archive-workspace { padding-top: 24px; } }
 @media(prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .expedition-card { transition: none; } .expedition-card:hover { transform: none; } }

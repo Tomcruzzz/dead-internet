@@ -89,7 +89,48 @@ loading/error/cancel states, observations/inferences/gaps, source quotations and
 model/retrieval/generation metadata. Make no automatic AI requests. Capture changes
 unmount/cancel and clear analysis. Keep the original archive viewer independent.
 
-## Feature 2 proposal — not implemented
+## Feature 2 — initial implementation authorized November 6
+
+Retro View now offers an opt-in Gemini planner via POST /api/retro/ai. It reuses
+the existing bounded public fetch/adapters or controlled sample pages, never a
+logged-in browser session. Normalized source blocks receive integer IDs; the
+model chooses a trusted directory/newspaper/desktop layout and up to eight block
+IDs to feature. Strict validation rejects arbitrary fields, code, unknown IDs,
+duplicate IDs and model URLs. The application preserves all normalized blocks and
+source links, then renders escaped text through authored CSS with scripts disabled.
+Sample content stays labeled. AI does not recreate full application functionality,
+inspect computed CSS/screenshots or execute JavaScript-only sites without adapters.
+The initial themes are existing 1995 Web, Y2K Portal and Windows 98. Further themes
+and richer component plans below remain future work. Feature 3 is still unimplemented.
+
+If planning fails (including missing/disabled credentials, invalid output, quota or
+provider errors), return the already-retrieved source with an explicit classic
+fallback notice. Never label this as an AI-generated plan. Source fetch failures
+remain errors: a fallback cannot manufacture source content. No secondary provider
+is needed for classic fallback. Groq is now an explicitly disclosed second provider:
+Gemini gets one bounded 22-second attempt, then Groq gets one 15-second attempt.
+Both pass the identical plan validator; all-provider failure uses classic rendering.
+GROQ_API_KEY remains server-only. GROQ_MODEL defaults to openai/gpt-oss-20b, with
+openai/gpt-oss-120b also allowed; both support strict JSON schema. Groq REST calls
+use a fixed endpoint, no retries/redirects, 2,048 completion tokens, and a 64 KiB
+response cap. The shared process budget covers the whole chain and cannot be
+bypassed via fallback. Cancelling skips the next provider. This applies to Retro
+View only; the evidence-only 404 historian retains its existing Gemini boundary.
+
+Live verification November 6: controlled sample returned HTTP 200 with provider
+groq, model openai/gpt-oss-20b and a validated newspaper plan in 1.2 seconds.
+224 tests, ESLint and production build pass. Free tier limits remain provider/account
+dependent; free service has no guaranteed availability. Official references:
+[Groq strict output](https://console.groq.com/docs/structured-outputs),
+[rate limits](https://console.groq.com/docs/rate-limits).
+
+Input budget: 8,000 tokens, 40 abbreviated source blocks, 1,024 output tokens,
+LOW thinking, no retries and 45-second provider timeout. Uses the existing
+server-only key/configuration and shared prototype budget (50/day for this path).
+One explicit user action makes one generation; changing theme restyles the existing
+plan until the user rebuilds. Previous previews remain visible if planning fails.
+
+### Future richer plans
 
 Controlled PageDocument fixture → Gemini JSON plan → strict validator → trusted
 theme renderer → SIMULATED side-by-side preview. Plan schema: version, theme enum,

@@ -35,7 +35,17 @@ After configuring it and restarting, run HISTORIAN_SMOKE_REQUIRE_GEMINI=1 with
 npm run smoke:historian. 1.9 remains pending for live-answer/error-recovery and
 timeline-change browser verification; the evidence-only browser path passed.
 
-## 2. AI Mutate — planned only, needs later authorization
+## 2. AI Mutate — initial version authorized November 6
+
+Initial opt-in Retro View planner implemented: normalized source blocks, strict
+layout/order JSON, trusted directory/newspaper/desktop CSS, three existing themes,
+sample/public labels, preserved original text/links and classic fallback. 210 tests,
+lint and build pass. Browser controls and classic demo verified. Live Gemini remake
+was initially blocked by Gemini errors. Groq backup is now live-verified: a controlled
+sample returned a validated plan from openai/gpt-oss-20b in about 1.2 seconds.
+An additional browser request exercised the labeled classic fallback successfully.
+224 tests, lint and production build pass after adding provider-chain coverage.
+The richer six-theme/component registry below remains future work.
 - [ ] 2.1 Controlled demo PageDocument fixtures and theme/component/token registry.
 - [ ] 2.2 Versioned JSON plan schema with strict semantic validation.
 - [ ] 2.3 Separate Gemini planner using existing server/budget boundary.

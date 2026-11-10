@@ -52,6 +52,7 @@ const themes: Record<RetroStyle, { css: string; label: string; welcome: string }
 export function renderRetroPage(page: RetroPage, style: RetroStyle): string {
   if (page.remake) return renderRemake(page, style);
   const theme = themes[style] ?? themes.web95;
+  const planCss = page.ai?.layout === "newspaper" ? "article{column-count:2;column-gap:28px}article>*{break-inside:avoid}@media(max-width:700px){article{column-count:1}}" : page.ai?.layout === "desktop" ? "article{background:#c0c0c0;border:3px outset #eee}article>p,article>pre,article>blockquote{padding:14px;background:#fff;border:2px inset #ddd}article h2{background:#000080;color:#fff;padding:8px;font:700 18px Tahoma,sans-serif}" : "";
   let list = false;
   const content: string[] = [];
   page.blocks.forEach((block, index) => {
@@ -74,9 +75,9 @@ export function renderRetroPage(page: RetroPage, style: RetroStyle): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(page.title)} — retro view</title>
-<style>${baseCss}${theme.css}</style></head><body><div class="shell">
+<style>${baseCss}${theme.css}${planCss}</style></head><body><div class="shell">
 <div class="windowbar"><span>▣ ${escapeHtml(page.title.slice(0, 70))} — Retro Explorer</span><span aria-hidden="true">_ □ ×</span></div>
-<header class="masthead"><span class="stamp">SIMULATED / ${theme.label}</span><h1>${escapeHtml(page.title)}</h1>
+<header class="masthead"><span class="stamp">${page.ai ? `AI REMAKE / ${page.ai.sourceMode === "sample" ? "SAMPLE CONTENT / " : ""}` : ""}SIMULATED / ${theme.label}</span><h1>${escapeHtml(page.title)}</h1>
 ${page.description ? `<p class="tagline">${escapeHtml(page.description)}</p>` : ""}</header>
 <div class="address">Source: ${link(page.sourceUrl, page.sourceUrl)}</div><div class="welcome">${theme.welcome}</div>
 <div class="layout"><aside>

@@ -35,6 +35,8 @@ export interface RetroPage {
   links: { label: string; url: string }[];
   fetchedAt: string;
   truncated: boolean;
+  aiFallback?: string;
+  ai?: { model: string; layout: "directory" | "newspaper" | "desktop"; rationale: string; generatedAt: string; sourceMode?: ContentMode; provider?: "gemini" | "groq" };
   remake?: { kind: RemakeKind; content: ContentMode; notice: string; videos?: PublicVideo[]; query?: string; repository?: PublicRepository };
 }
 
