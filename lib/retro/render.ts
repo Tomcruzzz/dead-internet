@@ -52,7 +52,24 @@ const themes: Record<RetroStyle, { css: string; label: string; welcome: string }
 export function renderRetroPage(page: RetroPage, style: RetroStyle): string {
   if (page.remake) return renderRemake(page, style);
   const theme = themes[style] ?? themes.web95;
-  const planCss = page.ai?.layout === "newspaper" ? "article{column-count:2;column-gap:28px}article>*{break-inside:avoid}@media(max-width:700px){article{column-count:1}}" : page.ai?.layout === "desktop" ? "article{background:#c0c0c0;border:3px outset #eee}article>p,article>pre,article>blockquote{padding:14px;background:#fff;border:2px inset #ddd}article h2{background:#000080;color:#fff;padding:8px;font:700 18px Tahoma,sans-serif}" : "";
+  // Every AI plan selects a materially distinct authored composition, not merely a color change.
+  const planCss = page.ai?.layout === "newspaper" ? `
+  .masthead{border-bottom:7px double currentColor;text-align:center}.masthead h1{font-family:Georgia,serif;font-size:48px;letter-spacing:-2px}
+  .layout{display:flex;flex-direction:column}.layout aside{display:flex;flex-wrap:wrap;gap:10px}.layout aside .panel{flex:1;min-width:180px}
+  article{column-count:2;column-gap:28px;column-rule:1px solid #aaa;padding:30px}article>*{break-inside:avoid}article>p:first-of-type:first-letter{float:left;font:bold 52px/.9 Georgia,serif;padding:4px 8px 0 0}
+  @media(max-width:700px){article{column-count:1}.masthead h1{font-size:30px}}
+  ` : page.ai?.layout === "desktop" ? `
+  .windowbar{display:flex;justify-content:space-between;background:linear-gradient(90deg,#000080,#1084d0);padding:8px 12px;color:white;font:bold 13px Tahoma,sans-serif}
+  .shell{border:3px outset #eee;background:#c0c0c0;padding:5px;box-shadow:8px 8px #0005}.masthead{border:2px inset #eee;margin:8px;background:#e6e6e6;color:#000080;text-align:left;padding:20px}.masthead h1{font:700 30px Tahoma,sans-serif;text-shadow:none}
+  .layout{grid-template-columns:200px minmax(0,1fr);gap:16px;padding:8px}.panel{border:2px outset #eee;background:#c0c0c0;color:#111}.panel h2{background:#000080;color:white;padding:8px;font:700 13px Tahoma,sans-serif}
+  article{background:#c0c0c0;border:3px outset #eee;padding:12px;column-count:1;color:#111}article>p,article>pre,article>blockquote{padding:18px;background:white;border:2px inset #ddd;margin-bottom:16px}article h2,article h3{background:#000080;color:#fff;padding:10px;font:700 18px Tahoma,sans-serif}
+  @media(max-width:640px){.layout{grid-template-columns:1fr}}
+  ` : page.ai ? `
+  .layout{grid-template-columns:260px minmax(0,1fr);gap:10px}.masthead{text-align:left;border:3px double currentColor}.masthead h1{font-size:44px}.welcome{text-align:left;letter-spacing:2px;border-top:2px solid currentColor}
+  article{border:3px double #888;background:transparent;padding:18px}article>p,article>blockquote,article>pre{padding:20px;border:1px solid #888;background:#fffef2;color:#161616;box-shadow:4px 4px #0002;margin-bottom:18px}article h2,article h3{padding:12px;border-left:8px solid #e5ae26;background:#fff0b8;color:#111;font-family:Arial,sans-serif}
+  .panel{border:3px ridge #aaa}.panel li{padding:8px 0;border-bottom:1px dotted #888}.badge{padding:15px;font-size:13px}
+  @media(max-width:640px){.layout{grid-template-columns:1fr}.masthead h1{font-size:30px}}
+  ` : "";
   let list = false;
   const content: string[] = [];
   page.blocks.forEach((block, index) => {

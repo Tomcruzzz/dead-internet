@@ -24,4 +24,13 @@ describe("AI transformation safety", () => {
     expect(normalized.remake).toBeUndefined(); expect(normalized.blocks.some(block => block.text === "Source video")).toBe(true);
     expect(normalized.links.some(link => link.url.includes("watch?v=1"))).toBe(true);
   });
+  it("gives every AI layout a distinct composition from the classic renderer", () => {
+    const classic = renderRetroPage(page, "web95");
+    for (const layout of ["directory", "newspaper", "desktop"] as const) {
+      const html = renderRetroPage(applyRetroPlan(page, { ...plan, layout }, "test-model"), "web95");
+      expect(html).not.toBe(classic);
+      expect(html).toContain(layout === "directory" ? "grid-template-columns:260px" : layout === "newspaper" ? "column-rule:1px" : "box-shadow:8px 8px");
+      expect(html).toContain("script-src 'none'");
+    }
+  });
 });

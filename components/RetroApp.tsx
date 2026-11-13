@@ -13,11 +13,15 @@ export function RetroApp() {
   const [page, setPage] = useState<RetroPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [useAi, setUseAi] = useState(false);
+  const [useAi, setUseAi] = useState(true);
   const [mobilePreview, setMobilePreview] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const iframe = useRef<HTMLIFrameElement | null>(null);
+  const previewSection = useRef<HTMLElement | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => {
+    if (page) previewSection.current?.scrollIntoView({ behavior: "instant", block: "start" });
+  }, [page]);
   const preview = useMemo(() => page ? renderRetroPage(page, style) : "", [page, style]);
 
   const convert = useCallback(async (input = url, requestedLayout = layout, requestedContent = content) => {
@@ -129,7 +133,8 @@ export function RetroApp() {
       {error && <div role="alert" className="mt-6 rounded border border-amber-800 bg-amber-950/20 p-4 text-sm text-amber-200">
         {error}{page ? " Your previous preview remains below." : ""}<button type="button" onClick={() => void convert()} className="ml-3 underline underline-offset-4">Try again</button>
       </div>}
-      {page && <section aria-label="Retro preview" className="mt-8">
+      {page && <section ref={previewSection} aria-label="Retro preview" className="mt-8 scroll-mt-5">
+        <p role="status" className={`mb-4 rounded-xl border p-4 text-sm font-medium ${page.ai ? "border-violet-400/40 bg-violet-400/10 text-violet-200" : "border-amber-800 bg-amber-950/20 text-amber-200"}`}>{page.ai ? `✦ AI redesign complete · ${page.ai.layout} layout · ${page.ai.provider === "groq" ? "Groq" : "Gemini"}` : page.aiFallback ? "AI was unavailable — showing a classic preview instead." : "Classic preview ready · no AI was used."}</p>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div><p role="status" className="font-mono text-sm text-amber-300">SIMULATED · {RETRO_STYLES.find(option => option.id === style)?.name}</p>
             <p className="mt-1 text-sm text-neutral-400">{page.ai?.sourceMode === "sample" ? "AI layout plan · illustrative sample content" : page.remake?.content === "public" ? "Real public source content · simulated retro layout" : page.remake ? "Interactive design remake · illustrative sample content" : "A creative remake of current public content"}. Change styles instantly above.</p></div>
